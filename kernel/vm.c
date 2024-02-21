@@ -465,28 +465,19 @@ void vmprint_t(pagetable_t pagetable, int step) {
   for (int i = 0; i < 512; i++) {
     pte_t pte = pagetable[i];
 
-    if((pte & PTE_V) && (pte & (PTE_R|PTE_W|PTE_X)) == 0){
-      uint64 child = PTE2PA(pte);
-      // print the .. 
-      for (int temp = 1; temp <= step; temp++) {
-        if (temp == step) 
-          printf("..");
-        else
-          printf(".. ");
-      }
-      printf("%d: pte %p pa %p\n", i, pte, child);
+    if (pte & PTE_V) {
+    uint64 child = PTE2PA(pte);
+    // print the .. 
+    for (int temp = 1; temp <= step; temp++) {
+      if (temp == step) 
+        printf("..");
+      else
+        printf(".. ");
+    }
+    printf("%d: pte %p pa %p\n", i, pte, child);
 
+    if ((pte & (PTE_R|PTE_W|PTE_X)) == 0)
       vmprint_t((pagetable_t)child, step + 1);
-    } else if (pte & PTE_V) {
-      uint64 child = PTE2PA(pte);
-      // print the .. 
-      for (int temp = 1; temp <= step; temp++) {
-        if (temp == step) 
-          printf("..");
-        else
-          printf(".. ");
-      }
-      printf("%d: pte %p pa %p\n", i, pte, child);
     }
   }
 }
