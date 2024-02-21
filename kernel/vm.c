@@ -76,12 +76,17 @@ walk(pagetable_t pagetable, uint64 va, int alloc)
 
   for(int level = 2; level > 0; level--) {
     pte_t *pte = &pagetable[PX(level, va)];
+    // if valid bit is set
     if(*pte & PTE_V) {
+      // change pagetable to the next pagetable
       pagetable = (pagetable_t)PTE2PA(*pte);
     } else {
+      // if this entry without a valid page tabel address 
       if(!alloc || (pagetable = (pde_t*)kalloc()) == 0)
         return 0;
+      // empty entire page table
       memset(pagetable, 0, PGSIZE);
+      // set valid bit 
       *pte = PA2PTE(pagetable) | PTE_V;
     }
   }
@@ -151,13 +156,18 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
   uint64 a, last;
   pte_t *pte;
 
+  // round down the address
   a = PGROUNDDOWN(va);
+  // round up the address + size
   last = PGROUNDDOWN(va + size - 1);
   for(;;){
+    // alloc == 0 || pagetable == 0
     if((pte = walk(pagetable, a, 1)) == 0)
       return -1;
+    // address is not valid
     if(*pte & PTE_V)
       panic("remap");
+    // map the va to the pa
     *pte = PA2PTE(pa) | perm | PTE_V;
     if(a == last)
       break;
@@ -277,6 +287,7 @@ freewalk(pagetable_t pagetable)
   // there are 2^9 = 512 PTEs in a page table.
   for(int i = 0; i < 512; i++){
     pte_t pte = pagetable[i];
+    // if pte valid and not a leaf map
     if((pte & PTE_V) && (pte & (PTE_R|PTE_W|PTE_X)) == 0){
       // this PTE points to a lower-level page table.
       uint64 child = PTE2PA(pte);
@@ -294,6 +305,7 @@ freewalk(pagetable_t pagetable)
 void
 uvmfree(pagetable_t pagetable, uint64 sz)
 {
+  // check sz's validity
   if(sz > 0)
     uvmunmap(pagetable, 0, PGROUNDUP(sz)/PGSIZE, 1);
   freewalk(pagetable);
@@ -438,5 +450,43 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
     return 0;
   } else {
     return -1;
+  }
+}
+
+// access the pagetable recursively
+void vmprint(pagetable_t pagetable) {
+  vmprint_t(pagetable, 1);    
+}
+
+void vmprint_t(pagetable_t pagetable, int step) {
+  if (step == 1)
+    printf("page table %p\n", pagetable);
+
+  for (int i = 0; i < 512; i++) {
+    pte_t pte = pagetable[i];
+
+    if((pte & PTE_V) && (pte & (PTE_R|PTE_W|PTE_X)) == 0){
+      uint64 child = PTE2PA(pte);
+      // print the .. 
+      for (int temp = 1; temp <= step; temp++) {
+        if (temp == step) 
+          printf("..");
+        else
+          printf(".. ");
+      }
+      printf("%d: pte %p pa %p\n", i, pte, child);
+
+      vmprint_t((pagetable_t)child, step + 1);
+    } else if (pte & PTE_V) {
+      uint64 child = PTE2PA(pte);
+      // print the .. 
+      for (int temp = 1; temp <= step; temp++) {
+        if (temp == step) 
+          printf("..");
+        else
+          printf(".. ");
+      }
+      printf("%d: pte %p pa %p\n", i, pte, child);
+    }
   }
 }

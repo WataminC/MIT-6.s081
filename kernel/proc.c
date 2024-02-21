@@ -96,12 +96,14 @@ allocproc(void)
 
   for(p = proc; p < &proc[NPROC]; p++) {
     acquire(&p->lock);
+    // Found first unused process
     if(p->state == UNUSED) {
       goto found;
     } else {
       release(&p->lock);
     }
   }
+  // return NULL when can't allocate a process
   return 0;
 
 found:
