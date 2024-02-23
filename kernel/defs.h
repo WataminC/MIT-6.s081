@@ -185,6 +185,8 @@ void            vminit(pagetable_t pagetable);
 void            vmmap(pagetable_t, uint64, uint64, uint64, int);
 uint64          vmpa(pagetable_t, uint64);
 void            free_pagetable(pagetable_t pagetable);
+void            u2kvmcopy(pagetable_t, pagetable_t, uint64, uint64);
+uint64          vmdealloc(pagetable_t, uint64, uint64);
 
 // plic.c
 void            plicinit(void);

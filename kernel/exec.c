@@ -49,6 +49,10 @@ exec(char *path, char **argv)
     if(ph.vaddr + ph.memsz < ph.vaddr)
       goto bad;
     uint64 sz1;
+
+    if (ph.vaddr + ph.memsz >= PLIC)
+      goto bad;
+
     if((sz1 = uvmalloc(pagetable, sz, ph.vaddr + ph.memsz)) == 0)
       goto bad;
     sz = sz1;
@@ -68,6 +72,10 @@ exec(char *path, char **argv)
   // Use the second as the user stack.
   sz = PGROUNDUP(sz);
   uint64 sz1;
+
+  // if (sz + 2*PGSIZE >= PLIC)
+  //   goto bad;
+
   if((sz1 = uvmalloc(pagetable, sz, sz + 2*PGSIZE)) == 0)
     goto bad;
   sz = sz1;
@@ -115,6 +123,9 @@ exec(char *path, char **argv)
   p->trapframe->epc = elf.entry;  // initial program counter = main
   p->trapframe->sp = sp; // initial stack pointer
   proc_freepagetable(oldpagetable, oldsz);
+
+  uvmunmap(p->kernel_pagetable, 0, PGROUNDUP(oldsz)/PGSIZE, 0);
+  u2kvmcopy(p->kernel_pagetable, p->pagetable, 0, p->sz);
 
   if (p->pid == 1)
     vmprint(p->pagetable);

@@ -6,6 +6,9 @@
 #include "defs.h"
 #include "fs.h"
 
+int copyin_new(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len);
+int copyinstr_new(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max);
+
 /*
  * the kernel's page table.
  */
@@ -23,6 +26,7 @@ kvminit()
 {
   kernel_pagetable = (pagetable_t) kalloc();
   vminit(kernel_pagetable);
+  vmmap(kernel_pagetable, CLINT, CLINT, 0x10000, PTE_R | PTE_W);
 }
 
 void vminit(pagetable_t pagetable) 
@@ -36,7 +40,7 @@ void vminit(pagetable_t pagetable)
   vmmap(pagetable, VIRTIO0, VIRTIO0, PGSIZE, PTE_R | PTE_W);
 
   // CLINT
-  vmmap(pagetable, CLINT, CLINT, 0x10000, PTE_R | PTE_W);
+  // vmmap(pagetable, CLINT, CLINT, 0x10000, PTE_R | PTE_W);
 
   // PLIC
   vmmap(pagetable, PLIC, PLIC, 0x400000, PTE_R | PTE_W);
@@ -157,6 +161,7 @@ kvmpa(uint64 va)
   return vmpa(kernel_pagetable, va);
 }
 
+// return a pa with its corresponding va in a pagetable
 uint64
 vmpa(pagetable_t pagetable, uint64 va)
 {
@@ -435,23 +440,24 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 int
 copyin(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
 {
-  uint64 n, va0, pa0;
+  // uint64 n, va0, pa0;
 
-  while(len > 0){
-    va0 = PGROUNDDOWN(srcva);
-    pa0 = walkaddr(pagetable, va0);
-    if(pa0 == 0)
-      return -1;
-    n = PGSIZE - (srcva - va0);
-    if(n > len)
-      n = len;
-    memmove(dst, (void *)(pa0 + (srcva - va0)), n);
+  // while(len > 0){
+  //   va0 = PGROUNDDOWN(srcva);
+  //   pa0 = walkaddr(pagetable, va0);
+  //   if(pa0 == 0)
+  //     return -1;
+  //   n = PGSIZE - (srcva - va0);
+  //   if(n > len)
+  //     n = len;
+  //   memmove(dst, (void *)(pa0 + (srcva - va0)), n);
 
-    len -= n;
-    dst += n;
-    srcva = va0 + PGSIZE;
-  }
-  return 0;
+  //   len -= n;
+  //   dst += n;
+  //   srcva = va0 + PGSIZE;
+  // }
+  // return 0;
+  return copyin_new(pagetable, dst, srcva, len);
 }
 
 // Copy a null-terminated string from user to kernel.
@@ -461,40 +467,41 @@ copyin(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
 int
 copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
 {
-  uint64 n, va0, pa0;
-  int got_null = 0;
+  // uint64 n, va0, pa0;
+  // int got_null = 0;
 
-  while(got_null == 0 && max > 0){
-    va0 = PGROUNDDOWN(srcva);
-    pa0 = walkaddr(pagetable, va0);
-    if(pa0 == 0)
-      return -1;
-    n = PGSIZE - (srcva - va0);
-    if(n > max)
-      n = max;
+  // while(got_null == 0 && max > 0){
+  //   va0 = PGROUNDDOWN(srcva);
+  //   pa0 = walkaddr(pagetable, va0);
+  //   if(pa0 == 0)
+  //     return -1;
+  //   n = PGSIZE - (srcva - va0);
+  //   if(n > max)
+  //     n = max;
 
-    char *p = (char *) (pa0 + (srcva - va0));
-    while(n > 0){
-      if(*p == '\0'){
-        *dst = '\0';
-        got_null = 1;
-        break;
-      } else {
-        *dst = *p;
-      }
-      --n;
-      --max;
-      p++;
-      dst++;
-    }
+  //   char *p = (char *) (pa0 + (srcva - va0));
+  //   while(n > 0){
+  //     if(*p == '\0'){
+  //       *dst = '\0';
+  //       got_null = 1;
+  //       break;
+  //     } else {
+  //       *dst = *p;
+  //     }
+  //     --n;
+  //     --max;
+  //     p++;
+  //     dst++;
+  //   }
 
-    srcva = va0 + PGSIZE;
-  }
-  if(got_null){
-    return 0;
-  } else {
-    return -1;
-  }
+  //   srcva = va0 + PGSIZE;
+  // }
+  // if(got_null){
+  //   return 0;
+  // } else {
+  //   return -1;
+  // }
+  return copyinstr_new(pagetable, dst, srcva, max);
 }
 
 // access the pagetable recursively
@@ -524,4 +531,43 @@ void vmprint_t(pagetable_t pagetable, int step) {
       vmprint_t((pagetable_t)child, step + 1);
     }
   }
+}
+
+void u2kvmcopy(pagetable_t kernel_pagetable, pagetable_t pagetable, uint64 start, uint64 end)
+{
+  pagetable_t pte_u, pte_k;
+
+  if (start < 0 || end < 0)
+  {
+    printf("Error in u2kvmcopy: size < 0\n");
+    return ;
+  }
+
+  start = PGROUNDDOWN(start);
+  end = PGROUNDDOWN(end);
+  for (uint64 i = start; i <= end; i += PGSIZE) 
+  {
+    // i is va
+    pte_u = walk(pagetable, i, 0);
+    pte_k = walk(kernel_pagetable, i, 1);
+
+    // clear the PTE_U bit in kernel page table
+    if ((*pte_u) & PTE_V)
+      *pte_k = (*pte_u) & (~PTE_U);
+  }
+}
+
+// dealloc the page table without free the physical memory
+uint64
+vmdealloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz)
+{
+  if(newsz >= oldsz)
+    return oldsz;
+
+  if(PGROUNDUP(newsz) < PGROUNDUP(oldsz)){
+    int npages = (PGROUNDUP(oldsz) - PGROUNDUP(newsz)) / PGSIZE;
+    uvmunmap(pagetable, PGROUNDUP(newsz), npages, 0);
+  }
+
+  return newsz;
 }

@@ -254,6 +254,8 @@ userinit(void)
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
 
+  u2kvmcopy(p->kernel_pagetable, p->pagetable, 0, p->sz);
+
   p->state = RUNNABLE;
 
   release(&p->lock);
@@ -272,8 +274,10 @@ growproc(int n)
     if((sz = uvmalloc(p->pagetable, sz, sz + n)) == 0) {
       return -1;
     }
+    u2kvmcopy(p->kernel_pagetable, p->pagetable, p->sz, sz);
   } else if(n < 0){
     sz = uvmdealloc(p->pagetable, sz, sz + n);
+    vmdealloc(p->kernel_pagetable, p->sz, sz);
   }
   p->sz = sz;
   return 0;
@@ -318,6 +322,8 @@ fork(void)
   safestrcpy(np->name, p->name, sizeof(p->name));
 
   pid = np->pid;
+
+  u2kvmcopy(np->kernel_pagetable, np->pagetable, 0, np->sz);
 
   np->state = RUNNABLE;
 
