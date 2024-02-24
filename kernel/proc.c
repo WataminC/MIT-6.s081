@@ -167,15 +167,16 @@ freeproc(struct proc *p)
   p->chan = 0;
   p->killed = 0;
   p->xstate = 0;
-  p->state = UNUSED;
 
   // free kernel stack
   uint64 pa = vmpa(p->kernel_pagetable, p->kstack);
   kfree((void *)pa);
   p->kstack = 0;
 
+  // vmprint(p->kernel_pagetable);
   free_pagetable(p->kernel_pagetable);
   p->kernel_pagetable = 0;
+  p->state = UNUSED;
 }
 
 // Create a user page table for a given process,

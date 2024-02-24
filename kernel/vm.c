@@ -201,7 +201,11 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
       panic("remap");
     // map the va to the pa
     *pte = PA2PTE(pa) | perm | PTE_V;
-    if(a == last)
+
+    if (*pte == 0x2003808b90184000)
+      printf("FINF ERROR!\n");
+
+    if (a == last)
       break;
     a += PGSIZE;
     pa += PGSIZE;
@@ -335,6 +339,28 @@ freewalk(pagetable_t pagetable)
 void 
 free_pagetable(pagetable_t pagetable)
 {
+  // // there are 2^9 = 512 PTEs in a page table.
+  // for(int i = 0; i < 512; i++){
+  //   pte_t pte = pagetable[i];
+  //   // if pte valid and not a leaf map
+  //   if((pte & PTE_V) && (pte & (PTE_R|PTE_W|PTE_X)) == 0){
+  //     // this PTE points to a lower-level page table.
+  //     uint64 child = PTE2PA(pte);
+  //     free_pagetable((pagetable_t)child);
+  //     pagetable[i] = 0;
+  //   } 
+  // }
+  // kfree((void*)pagetable);
+  free_pagetable_t(pagetable, 0);
+}
+
+void free_pagetable_t(pagetable_t pagetable, int step)
+{
+  if (step < 0 || step == 3)
+  {
+    return ;
+  }
+
   // there are 2^9 = 512 PTEs in a page table.
   for(int i = 0; i < 512; i++){
     pte_t pte = pagetable[i];
@@ -342,7 +368,7 @@ free_pagetable(pagetable_t pagetable)
     if((pte & PTE_V) && (pte & (PTE_R|PTE_W|PTE_X)) == 0){
       // this PTE points to a lower-level page table.
       uint64 child = PTE2PA(pte);
-      free_pagetable((pagetable_t)child);
+      free_pagetable_t((pagetable_t)child, step + 1);
       pagetable[i] = 0;
     } 
   }
@@ -537,13 +563,13 @@ void u2kvmcopy(pagetable_t kernel_pagetable, pagetable_t pagetable, uint64 start
 {
   pagetable_t pte_u, pte_k;
 
-  if (start < 0 || end < 0)
+  if (start < 0 || end < 0 || end >= PLIC)
   {
     printf("Error in u2kvmcopy: size < 0\n");
     return ;
   }
 
-  start = PGROUNDDOWN(start);
+  start = PGROUNDUP(start);
   end = PGROUNDDOWN(end);
   for (uint64 i = start; i <= end; i += PGSIZE) 
   {
@@ -554,6 +580,9 @@ void u2kvmcopy(pagetable_t kernel_pagetable, pagetable_t pagetable, uint64 start
     // clear the PTE_U bit in kernel page table
     if ((*pte_u) & PTE_V)
       *pte_k = (*pte_u) & (~PTE_U);
+    
+    if (*pte_k == 0x2003808b90184000)
+      printf("FIND!!!\n");
   }
 }
 
