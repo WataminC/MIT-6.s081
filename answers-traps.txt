@@ -1,0 +1,13 @@
+1. f(8)+1 stored in a1 register(compiler optimize the code that replace f(8)+1 to 12 directly)
+   a2 hold 13
+
+2. f: 0x26
+   g: 0x14
+
+3. 0x630
+
+4. 0x30
+
+5. "He110 World"
+
+6. random value in the a2 which depending on the context of the code 
