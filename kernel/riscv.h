@@ -23,7 +23,9 @@ r_mstatus()
   return x;
 }
 
-// s0 holds the base pointer/frame pointer in riscv
+// s0 holds the frame pointer in riscv
+// !!! frame pointer is different from base pointer
+// rbp + 16 = fp
 static inline uint64
 r_fp()
 {

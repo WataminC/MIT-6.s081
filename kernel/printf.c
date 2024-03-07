@@ -121,6 +121,7 @@ panic(char *s)
   printf("panic: ");
   printf(s);
   printf("\n");
+  backtrace();
   panicked = 1; // freeze uart output from other CPUs
   for(;;)
     ;
@@ -135,5 +136,15 @@ printfinit(void)
 
 void backtrace()
 {
-  
+  // frame pointer of the current frame
+  uint64 fp = r_fp();
+  uint64 ra = 0;
+  // function frame must aligned with page size
+  while (fp != PGROUNDDOWN(fp))
+  {
+    // get the return address
+    ra = *((uint64 *)(fp - 8));
+    printf("%x\n", ra);
+    fp = *((uint64 *)(fp - 16));
+  }
 }

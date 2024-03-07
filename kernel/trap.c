@@ -6,6 +6,19 @@
 #include "proc.h"
 #include "defs.h"
 
+// stvec: address of its trap handler
+// sepc: pc where trap occur
+// scause: interupt reason
+// sret instruction would copy sepc to the pc
+// sscratch: point the address of the process's trapframe
+
+/*
+  what does ecall do?
+  1. set sepc with current pc
+  2. raise to the priviledge mode
+  3. jump to the address where stvec pointing
+*/
+
 struct spinlock tickslock;
 uint ticks;
 
@@ -58,6 +71,7 @@ usertrap(void)
 
     // sepc points to the ecall instruction,
     // but we want to return to the next instruction.
+    // epc now point to the ret instruction
     p->trapframe->epc += 4;
 
     // an interrupt will change sstatus &c registers,
