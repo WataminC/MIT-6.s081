@@ -144,7 +144,7 @@ void backtrace()
   {
     // get the return address
     ra = *((uint64 *)(fp - 8));
-    printf("%x\n", ra);
+    printf("%p\n", ra);
     fp = *((uint64 *)(fp - 16));
   }
 }
