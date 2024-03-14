@@ -130,6 +130,7 @@ found:
   p->alarmInterval = 0;
   p->alarmtimes = 0;
   p->func = 0;
+  p->timerOff = 0;
 
   return p;
 }
@@ -157,6 +158,7 @@ freeproc(struct proc *p)
   p->alarmInterval = 0;
   p->alarmtimes = 0;
   p->func = 0;
+  p->timerOff = 0;
 
   p->state = UNUSED;
 }

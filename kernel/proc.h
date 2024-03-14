@@ -108,4 +108,7 @@ struct proc {
   int alarmInterval;
   void (*func)(void);
   uint64 alarmtimes;
+
+  struct trapframe alarmTrapframe;
+  uint8 timerOff;
 };

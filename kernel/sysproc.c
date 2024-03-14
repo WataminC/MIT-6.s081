@@ -105,13 +105,13 @@ sys_sigalarm(void)
   if (argint(0, &alarm) < 0)
     return -1;
   
-  void *func;
-  if (argaddr(1, func) < 0)
+  uint64 func = 0;
+  if (argaddr(1, &func) < 0)
     return -1;
 
   struct proc* currentproc = myproc();
   currentproc->alarmInterval = alarm;
-  currentproc->func = func;
+  currentproc->func = (void (*)())func;
   currentproc->alarmtimes = alarm;
 
   return 0;
@@ -120,5 +120,8 @@ sys_sigalarm(void)
 uint64
 sys_sigreturn(void)
 {
+  struct proc* p = myproc();
+  *p->trapframe = p->alarmTrapframe;
+  p->timerOff = 0;
   return 0;
 }

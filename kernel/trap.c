@@ -95,9 +95,18 @@ usertrap(void)
   {
     if (p->alarmInterval != 0)
     {
-      if (p->alarmtimes--)
+      if (!p->alarmtimes--)
       {
-        p->
+        if (!p->timerOff)
+        {
+          // reset alarmtimes
+          p->alarmtimes = p->alarmInterval;
+          // save trapframe
+          p->alarmTrapframe = *p->trapframe;
+          // set user pc to the handler function
+          p->trapframe->epc = (uint64)p->func;
+          p->timerOff = 1;
+        }
       }
     }
     yield();
