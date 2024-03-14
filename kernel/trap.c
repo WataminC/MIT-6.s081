@@ -92,7 +92,16 @@ usertrap(void)
 
   // give up the CPU if this is a timer interrupt.
   if(which_dev == 2)
+  {
+    if (p->alarmInterval != 0)
+    {
+      if (p->alarmtimes--)
+      {
+        p->
+      }
+    }
     yield();
+  } 
 
   usertrapret();
 }

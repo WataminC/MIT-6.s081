@@ -112,7 +112,7 @@ sys_sigalarm(void)
   struct proc* currentproc = myproc();
   currentproc->alarmInterval = alarm;
   currentproc->func = func;
-  currentproc->alarmtimes += alarm;
+  currentproc->alarmtimes = alarm;
 
   return 0;
 }
