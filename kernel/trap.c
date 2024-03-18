@@ -71,7 +71,7 @@ usertrap(void)
       p->killed = 1;
       exit(-1);
     }
-    printf("Page Fault %p\n", va);
+    // printf("Page Fault %p\n", va);
     va = PGROUNDDOWN(va);
     uint64 pa = (uint64)kalloc();
     if (pa == 0) {
@@ -267,7 +267,7 @@ void LazyAllocation(uint64 va)
   //   p->killed = 1;
   //   exit(-1);
   // }
-  printf("Page Fault %p\n", va);
+  // printf("Page Fault %p\n", va);
   va = PGROUNDDOWN(va);
   uint64 pa = (uint64)kalloc();
   if (pa == 0)
