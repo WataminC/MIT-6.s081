@@ -65,6 +65,26 @@ usertrap(void)
     intr_on();
 
     syscall();
+  } else if ((r_scause() == 15 || r_scause() == 13) && checkLazy(r_stval())) {  // lazy allocation
+    uint64 va = r_stval();
+    if (va > p->sz) {
+      p->killed = 1;
+      exit(-1);
+    }
+    printf("Page Fault %p\n", va);
+    va = PGROUNDDOWN(va);
+    uint64 pa = (uint64)kalloc();
+    if (pa == 0) {
+      p->killed = 1;
+    }
+    else {
+      memset((void *)pa, 0, PGSIZE);
+      if (mappages(p->pagetable, va, PGSIZE, pa, PTE_X | PTE_R | PTE_W | PTE_U) < 0)  
+      { // page fault occured when user access a invaild or a non-user space !
+        kfree((void *)pa);
+        p->killed = 1;
+      }
+    }
   } else if((which_dev = devintr()) != 0){
     // ok
   } else {
@@ -218,3 +238,49 @@ devintr()
   }
 }
 
+uint64 checkLazy(uint64 add)
+{
+  struct proc *p = myproc();
+
+  uint64 checkAdd = (add < p->sz);
+  uint64 checkStack = (PGROUNDDOWN(add) != r_sp());
+  
+  pte_t *pte;
+  uint64 checkValid = 1;
+
+  if (!(checkAdd && checkStack))
+    return 0;
+
+  if ((pte = walk(p->pagetable, add, 0)) != 0)
+  {
+    if ((*pte & PTE_V) != 0) 
+      checkValid = 0;
+  }
+  return checkAdd && checkStack && checkValid;
+}
+
+void LazyAllocation(uint64 va)
+{
+  struct proc *p = myproc();
+  // if (va > p->sz)
+  // {
+  //   p->killed = 1;
+  //   exit(-1);
+  // }
+  printf("Page Fault %p\n", va);
+  va = PGROUNDDOWN(va);
+  uint64 pa = (uint64)kalloc();
+  if (pa == 0)
+  {
+    p->killed = 1;
+  }
+  else
+  {
+    memset((void *)pa, 0, PGSIZE);
+    if (mappages(p->pagetable, va, PGSIZE, pa, PTE_X | PTE_R | PTE_W | PTE_U) < 0)
+    { // page fault occured when user access a invaild or a non-user space !
+      kfree((void *)pa);
+      p->killed = 1;
+    }
+  }
+}
