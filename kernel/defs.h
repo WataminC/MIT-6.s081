@@ -146,6 +146,7 @@ void            trapinithart(void);
 extern struct spinlock tickslock;
 void            usertrapret(void);
 pte_t           *walk(pagetable_t pagetable, uint64 va, int alloc);
+int             cowFork(pagetable_t pagetable, uint64 va);
 
 // uart.c
 void            uartinit(void);

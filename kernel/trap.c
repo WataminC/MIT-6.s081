@@ -55,7 +55,7 @@ usertrap(void)
     // system call
 
     if(p->killed) {
-      printf("Process has beed killed!~~~~~~~~pid: %d, name: %s\n", p->pid, p->name);
+      // printf("Process has beed killed!~~~~~~~~pid: %d, name: %s\n", p->pid, p->name);
       exit(-1);
     }
 
@@ -82,7 +82,7 @@ usertrap(void)
     // COW fork
     if (cowFork(p->pagetable, r_stval()) < 0) {
       p->killed = 1;
-      panic("COW fork Error!\n");
+      // panic("COW fork Error!\n");
     }
   }
   else {
@@ -92,7 +92,7 @@ usertrap(void)
   }
 
   if(p->killed) {
-    printf("Process has beed killed!-------pid: %d, name: %s\n", p->pid, p->name);
+    // printf("Process has beed killed!-------pid: %d, name: %s\n", p->pid, p->name);
     exit(-1);
   }
 
