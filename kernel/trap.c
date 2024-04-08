@@ -15,6 +15,7 @@ extern char trampoline[], uservec[], userret[];
 void kernelvec();
 
 extern int devintr();
+int cowFork(pagetable_t pagetable, uint64 va);
 
 void
 trapinit(void)
@@ -53,8 +54,10 @@ usertrap(void)
   if(r_scause() == 8){
     // system call
 
-    if(p->killed)
+    if(p->killed) {
+      printf("Process has beed killed!~~~~~~~~pid: %d, name: %s\n", p->pid, p->name);
       exit(-1);
+    }
 
     // sepc points to the ecall instruction,
     // but we want to return to the next instruction.
@@ -67,14 +70,31 @@ usertrap(void)
     syscall();
   } else if((which_dev = devintr()) != 0){
     // ok
-  } else {
+  } else if (r_scause() == 15) {
+    // pte_t *pte = walk(p->pagetable, r_stval(), 0);
+
+    // // if not COW fork
+    // if ((*pte & PTE_COW) == 0) {
+    //   printf("Not COW fork fault!\n");
+    //   return ;
+    // }
+
+    // COW fork
+    if (cowFork(p->pagetable, r_stval()) < 0) {
+      p->killed = 1;
+      panic("COW fork Error!\n");
+    }
+  }
+  else {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
     p->killed = 1;
   }
 
-  if(p->killed)
+  if(p->killed) {
+    printf("Process has beed killed!-------pid: %d, name: %s\n", p->pid, p->name);
     exit(-1);
+  }
 
   // give up the CPU if this is a timer interrupt.
   if(which_dev == 2)
@@ -218,3 +238,53 @@ devintr()
   }
 }
 
+int cowFork(pagetable_t pagetable, uint64 va) {
+  if (va >= MAXVA) {
+    return -1;
+  }
+
+
+  va = PGROUNDDOWN(va);
+  if (va == 0x0000000087f44000)
+    printf("va cowfork: %p\n", va);
+
+  pte_t *pte = walk(pagetable, va, 0);
+
+  if (pte == 0) {
+    return -1;
+  }
+  // check Cow fork bit
+  if ((*pte & PTE_COW) == 0) {
+    printf("Not Cow Fork!\n");
+    return -1;
+  }
+
+  if ((*pte & PTE_U) == 0 || (*pte & PTE_V) == 0) {
+    printf("Invalid PTE!\n");
+    return -1;
+  }
+
+  uint64 pa = (uint64)kalloc();
+
+  if (pa == 0) {
+    printf("Kalloc Error!\n");
+    struct proc *p = myproc();
+    p->killed = 1;
+    return -1;
+  }
+  uint64 origin_pa = PTE2PA(*pte);
+  memmove((void *)pa, (void *)origin_pa, PGSIZE);
+
+  uint64 flags = PTE_FLAGS(*pte);
+
+  // set the write bit and clear the cow bit
+  flags |= PTE_W;
+  flags &= ~PTE_COW; 
+
+  *pte = PA2PTE(pa);
+  *pte |= flags;
+
+  kfree((void *)origin_pa);
+
+  return 0;
+}

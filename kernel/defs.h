@@ -145,6 +145,7 @@ void            trapinit(void);
 void            trapinithart(void);
 extern struct spinlock tickslock;
 void            usertrapret(void);
+pte_t           *walk(pagetable_t pagetable, uint64 va, int alloc);
 
 // uart.c
 void            uartinit(void);
@@ -154,6 +155,7 @@ void            uartputc_sync(int);
 int             uartgetc(void);
 
 // vm.c
+int             increref(uint64 , int);
 void            kvminit(void);
 void            kvminithart(void);
 uint64          kvmpa(uint64);
