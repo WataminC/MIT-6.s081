@@ -26,11 +26,11 @@
 #define IER_TX_ENABLE (1<<1)
 #define FCR 2                 // FIFO control register
 #define FCR_FIFO_ENABLE (1<<0)
-#define FCR_FIFO_CLEAR (3<<1) // clear the content of the two FIFOs
+#define FCR_FIFO_CLEAR (3<<1) // clear the content of the two FIFOs : receive and transmit
 #define ISR 2                 // interrupt status register
 #define LCR 3                 // line control register
 #define LCR_EIGHT_BITS (3<<0)
-#define LCR_BAUD_LATCH (1<<7) // special mode to set baud rate
+#define LCR_BAUD_LATCH (1<<7) // special mode to set baud rate | set DLAB = 1
 #define LSR 5                 // line status register
 #define LSR_RX_READY (1<<0)   // input is waiting to be read from RHR
 #define LSR_TX_IDLE (1<<5)    // THR can accept another character to send
@@ -50,7 +50,7 @@ extern volatile int panicked; // from printf.c
 void uartstart();
 
 void
-uartinit(void)
+uartinit(void)  // reference: https://www.lammertbies.nl/comm/info/serial-uart
 {
   // disable interrupts.
   WriteReg(IER, 0x00);
@@ -59,10 +59,10 @@ uartinit(void)
   WriteReg(LCR, LCR_BAUD_LATCH);
 
   // LSB for baud rate of 38.4K.
-  WriteReg(0, 0x03);
+  WriteReg(0, 0x03);  // DLL
 
   // MSB for baud rate of 38.4K.
-  WriteReg(1, 0x00);
+  WriteReg(1, 0x00);  // DLM
 
   // leave set-baud mode,
   // and set word length to 8 bits, no parity.
