@@ -79,11 +79,16 @@ thread_schedule(void)
     next_thread->state = RUNNING;
     t = current_thread;
     current_thread = next_thread;
+    if (next_thread != current_thread)
+    {
+      printf("Error!\n");
+      exit(-1);
+    }
     /* YOUR CODE HERE
      * Invoke thread_switch to switch from t to next_thread:
      * thread_switch(??, ??);
      */
-    thread_switch((uint64)&t->context, (uint64)&current_thread->context);
+    thread_switch((uint64)&t->context, (uint64)&next_thread->context);
   } else
     next_thread = 0;
 }
@@ -101,7 +106,7 @@ thread_create(void (*func)())
   // YOUR CODE HERE
   memset(&t->context, 0, sizeof(t->context));
   t->context.ra = (uint64)func;
-  t->context.sp = (uint64)t->stack;
+  t->context.sp = (uint64)(t->stack + STACK_SIZE - 1);
 }
 
 void 

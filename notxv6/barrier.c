@@ -32,11 +32,11 @@ static void barrier() {
   if (bstate.nthread == nthread) {
     bstate.nthread = 0;
     bstate.round += 1;
-    pthread_mutex_unlock(&bstate.barrier_mutex);
     pthread_cond_broadcast(&bstate.barrier_cond);
-  } else {
+  } 
+  else
     pthread_cond_wait(&bstate.barrier_cond, &bstate.barrier_mutex);
-  }
+  pthread_mutex_unlock(&bstate.barrier_mutex);
 }
 
 static void *thread(void *xa) {
@@ -47,6 +47,7 @@ static void *thread(void *xa) {
   for (i = 0; i < 20000; i++) {
     int t = bstate.round;
     assert(i == t);
+    // printf("i = %d, bstate.round = %d, bstate.nthread = %d\n", i, bstate.round, bstate.nthread);
     barrier();
     usleep(random() % 100);
   }
