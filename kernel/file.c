@@ -108,6 +108,7 @@ fileread(struct file *f, uint64 addr, int n)
 {
   int r = 0;
 
+  // Check the file is readable or not
   if(f->readable == 0)
     return -1;
 
