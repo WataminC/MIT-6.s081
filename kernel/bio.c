@@ -44,6 +44,7 @@ binit(void)
   bcache.head.prev = &bcache.head;
   bcache.head.next = &bcache.head;
   for(b = bcache.buf; b < bcache.buf+NBUF; b++){
+    // Insert b next to the head
     b->next = bcache.head.next;
     b->prev = &bcache.head;
     initsleeplock(&b->lock, "buffer");
@@ -125,8 +126,10 @@ brelse(struct buf *b)
   b->refcnt--;
   if (b->refcnt == 0) {
     // no one is waiting for it.
+    // Delete b from the list
     b->next->prev = b->prev;
     b->prev->next = b->next;
+    // Insert b next to the head
     b->next = bcache.head.next;
     b->prev = &bcache.head;
     bcache.head.next->prev = b;
