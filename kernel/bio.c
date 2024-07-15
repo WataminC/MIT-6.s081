@@ -83,8 +83,6 @@ bget(uint dev, uint blockno)
 {
   struct buf *b;
 
-  // acquire(&bcache.lock);
-
   int hashId = haskBlock(blockno);
   acquire(&bcache.bucketsLocks[hashId]);
 
@@ -99,26 +97,35 @@ bget(uint dev, uint blockno)
   }
 
   struct buf *bMin = &bcache.buckets[hashId];
+  release(&bcache.bucketsLocks[hashId]);
   int valid = 0;
+  int minId = 0;
 
-  for(b = bcache.buckets[hashId].next; b != &bcache.buckets[hashId]; b = b->next){
-    if(b->dev == dev && b->blockno == blockno){
-      bMin = b;
-      valid = 1;
+  for (int i = 0; i < NBUCKETS; ++i) {
+    acquire(&bcache.bucketsLocks[i]);
+    for(b = bcache.buckets[i].next; b != &bcache.buckets[i]; b = b->next){
+      if(b->refcnt == 0 && (b->ticks <= bMin->ticks)) {
+        bMin = b;
+        valid = 1;
+        minId = i;
+      }
     }
+    release(&bcache.bucketsLocks[i]);
   }
 
   
   if (!valid)
     panic("bget: no buffers");
 
+  acquire(&bcache.bucketsLocks[minId]);
+
   bMin->dev = dev;
   bMin->blockno = blockno;
   bMin->valid = 0;
   bMin->refcnt = 1;
   bMin->ticks = ticks;
-  release(&bcache.bucketsLocks[hashId]);
-  acquiresleep(&b->lock);
+  release(&bcache.bucketsLocks[minId]);
+  acquiresleep(&bMin->lock);
 
   return bMin;
 }
