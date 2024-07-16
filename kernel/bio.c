@@ -96,35 +96,77 @@ bget(uint dev, uint blockno)
     }
   }
 
-  struct buf *bMin = &bcache.buckets[hashId];
   release(&bcache.bucketsLocks[hashId]);
+
+  acquire(&bcache.lock);
+
+  acquire(&bcache.bucketsLocks[hashId]);
+
+  // Is the block already cached?
+  for(b = bcache.buckets[hashId].next; b != &bcache.buckets[hashId]; b = b->next){
+    if(b->dev == dev && b->blockno == blockno){
+      b->refcnt++;
+      release(&bcache.bucketsLocks[hashId]);
+      release(&bcache.lock);
+      acquiresleep(&b->lock);
+      return b;
+    }
+  }
+
+  release(&bcache.bucketsLocks[hashId]);
+
+  struct buf *bMin = 0;
+  int minTicks = ~0;
   int valid = 0;
   int minId = 0;
 
   for (int i = 0; i < NBUCKETS; ++i) {
     acquire(&bcache.bucketsLocks[i]);
+    valid = 0;
     for(b = bcache.buckets[i].next; b != &bcache.buckets[i]; b = b->next){
-      if(b->refcnt == 0 && (b->ticks <= bMin->ticks)) {
+      if(b->refcnt == 0 && (b->ticks < minTicks)) {
+        if (bMin != 0) {
+          int hashId2 = haskBlock(bMin->blockno);
+          if (hashId2 != i)
+            release(&bcache.bucketsLocks[hashId2]);
+        }
         bMin = b;
+        minTicks = bMin->ticks;
         valid = 1;
         minId = i;
       }
     }
-    release(&bcache.bucketsLocks[i]);
+    if (!valid)
+      release(&bcache.bucketsLocks[i]);
   }
-
   
-  if (!valid)
+  if (bMin == 0) {
+    release(&bcache.lock);
     panic("bget: no buffers");
-
-  acquire(&bcache.bucketsLocks[minId]);
-
+  }
+  
   bMin->dev = dev;
   bMin->blockno = blockno;
   bMin->valid = 0;
   bMin->refcnt = 1;
   bMin->ticks = ticks;
+
+  if (minId != hashId) {
+    bMin->prev->next = bMin->next;
+    bMin->next->prev = bMin->prev;
+  }
   release(&bcache.bucketsLocks[minId]);
+
+  if (minId != hashId) {
+    acquire(&bcache.bucketsLocks[hashId]);
+    bMin->next = bcache.buckets[hashId].next;
+    bcache.buckets[hashId].next = bMin;
+
+    bMin->next->prev = bMin;
+    bMin->prev = &bcache.buckets[hashId];
+    release(&bcache.bucketsLocks[hashId]);
+  }
+  release(&bcache.lock);
   acquiresleep(&bMin->lock);
 
   return bMin;
@@ -168,15 +210,16 @@ brelse(struct buf *b)
 
   b->refcnt--;
   if (b->refcnt == 0) {
-    // no one is waiting for it.
-    // Delete b from the list
-    b->next->prev = b->prev;
-    b->prev->next = b->next;
-    // Insert b next to the head
-    b->next = bcache.head.next;
-    b->prev = &bcache.head;
-    bcache.buckets[hashId].next->prev = b;
-    bcache.buckets[hashId].next = b;
+    // // no one is waiting for it.
+    // // Delete b from the list
+    // b->next->prev = b->prev;
+    // b->prev->next = b->next;
+    // // Insert b next to the head
+    // b->next = bcache.buckets[hashId].next;
+    // b->prev = &bcache.buckets[hashId];
+    // bcache.buckets[hashId].next->prev = b;
+    // bcache.buckets[hashId].next = b;
+    b->ticks = ticks;
   }
   
   release(&bcache.bucketsLocks[hashId]);

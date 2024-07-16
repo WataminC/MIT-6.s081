@@ -13,6 +13,7 @@ void freerange(void *pa_start, void *pa_end);
 
 extern char end[]; // first address after kernel.
                    // defined by kernel.ld.
+extern uint ticks;
 
 struct run {
   struct run *next;
@@ -60,15 +61,13 @@ kfree(void *pa)
   r = (struct run*)pa;
 
   push_off();
-
   int id = cpuid();
+  pop_off();
 
   acquire(&kmem[id].lock);
   r->next = kmem[id].freelist;
   kmem[id].freelist = r;
   release(&kmem[id].lock);
-
-  pop_off();
 }
 
 // Allocate one 4096-byte page of physical memory.
@@ -80,8 +79,8 @@ kalloc(void)
   struct run *r;
 
   push_off();
-
   int id = cpuid();
+  pop_off();
 
   acquire(&kmem[id].lock);
   r = kmem[id].freelist;
@@ -109,8 +108,6 @@ kalloc(void)
       }
     }
   }
-
-  pop_off();
 
   if(r)
     memset((char*)r, 5, PGSIZE); // fill with junk
