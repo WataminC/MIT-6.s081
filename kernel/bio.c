@@ -112,7 +112,6 @@ bget(uint dev, uint blockno)
       return b;
     }
   }
-
   release(&bcache.bucketsLocks[hashId]);
 
   struct buf *bMin = 0;
@@ -210,15 +209,6 @@ brelse(struct buf *b)
 
   b->refcnt--;
   if (b->refcnt == 0) {
-    // // no one is waiting for it.
-    // // Delete b from the list
-    // b->next->prev = b->prev;
-    // b->prev->next = b->next;
-    // // Insert b next to the head
-    // b->next = bcache.buckets[hashId].next;
-    // b->prev = &bcache.buckets[hashId];
-    // bcache.buckets[hashId].next->prev = b;
-    // bcache.buckets[hashId].next = b;
     b->ticks = ticks;
   }
   
