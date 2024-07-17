@@ -181,3 +181,22 @@ filewrite(struct file *f, uint64 addr, int n)
   return ret;
 }
 
+struct inode*
+symFile(struct inode* ip)
+{
+  uint i = 0;
+  while (ip != 0 && ip->type == T_SYMLINK)
+  {
+    if (i++ > 10)
+      return 0;
+    char str[MAXPATH];
+    readi(ip, 0, (uint64)str, 0, MAXPATH);
+    iunlockput(ip);
+    ip = namei(str);
+    if (ip == 0) {
+      return 0; 
+    }
+    ilock(ip);
+  }
+  return ip;
+}

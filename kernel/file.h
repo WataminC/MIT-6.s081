@@ -35,6 +35,8 @@ struct devsw {
   int (*write)(int, uint64, int);
 };
 
+struct inode* symFile(struct inode*);
+
 extern struct devsw devsw[];
 
 #define CONSOLE 1
