@@ -68,9 +68,12 @@ balloc(uint dev)
   struct buf *bp;
 
   bp = 0;
+  // There is a bitmap each BPB blocks (each bit in bitmap has a corresponding block)
   for(b = 0; b < sb.size; b += BPB){
+    // Read the current bitmap
     bp = bread(dev, BBLOCK(b, sb));
     for(bi = 0; bi < BPB && b + bi < sb.size; bi++){
+      // scan each bit in the bitmap
       m = 1 << (bi % 8);
       if((bp->data[bi/8] & m) == 0){  // Is block free?
         bp->data[bi/8] |= m;  // Mark block in use.
@@ -200,7 +203,9 @@ ialloc(uint dev, short type)
   struct dinode *dip;
 
   for(inum = 1; inum < sb.ninodes; inum++){
+    // Get the block that contain inode
     bp = bread(dev, IBLOCK(inum, sb));
+    // Get the inode by the offset of the current block
     dip = (struct dinode*)bp->data + inum%IPB;
     if(dip->type == 0){  // a free inode
       memset(dip, 0, sizeof(*dip));
@@ -438,6 +443,7 @@ itrunc(struct inode *ip)
   struct buf *bp;
   uint *a;
 
+  // Free the direct node
   for(i = 0; i < NDIRECT; i++){
     if(ip->addrs[i]){
       bfree(ip->dev, ip->addrs[i]);
@@ -445,6 +451,7 @@ itrunc(struct inode *ip)
     }
   }
 
+  // Free the indirect node
   if(ip->addrs[NDIRECT]){
     bp = bread(ip->dev, ip->addrs[NDIRECT]);
     a = (uint*)bp->data;
@@ -504,6 +511,7 @@ readi(struct inode *ip, int user_dst, uint64 dst, uint off, uint n)
   uint tot, m;
   struct buf *bp;
 
+  // check overflow 
   if(off > ip->size || off + n < off)
     return 0;
   if(off + n > ip->size)
@@ -648,20 +656,24 @@ skipelem(char *path, char *name)
   char *s;
   int len;
 
+  // pass all slash characters
   while(*path == '/')
     path++;
   if(*path == 0)
     return 0;
+
   s = path;
   while(*path != '/' && *path != 0)
     path++;
   len = path - s;
+
   if(len >= DIRSIZ)
     memmove(name, s, DIRSIZ);
   else {
     memmove(name, s, len);
     name[len] = 0;
   }
+
   while(*path == '/')
     path++;
   return path;
@@ -690,6 +702,7 @@ namex(char *path, int nameiparent, char *name)
     if(nameiparent && *path == '\0'){
       // Stop one level early.
       iunlock(ip);
+      // Return the parent directory's inode
       return ip;
     }
     if((next = dirlookup(ip, name, 0)) == 0){

@@ -223,9 +223,11 @@ log_write(struct buf *b)
 
   acquire(&log.lock);
   for (i = 0; i < log.lh.n; i++) {
+    // If the block has been cached
     if (log.lh.block[i] == b->blockno)   // log absorbtion
       break;
   }
+  // Record the block number to the log 
   log.lh.block[i] = b->blockno;
   if (i == log.lh.n) {  // Add new block to log?
     bpin(b);

@@ -125,8 +125,10 @@ brelse(struct buf *b)
   b->refcnt--;
   if (b->refcnt == 0) {
     // no one is waiting for it.
+    // Remove b from the list
     b->next->prev = b->prev;
     b->prev->next = b->next;
+    // insert b to the head of the list
     b->next = bcache.head.next;
     b->prev = &bcache.head;
     bcache.head.next->prev = b;
