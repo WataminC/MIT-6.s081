@@ -8,6 +8,7 @@ struct spinlock;
 struct sleeplock;
 struct stat;
 struct superblock;
+struct vmaInfo;
 
 // bio.c
 void            binit(void);
@@ -185,3 +186,7 @@ void            virtio_disk_intr(void);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
+
+void initVMA(struct proc *p);
+struct vmaInfo* getEmptyVMA(struct proc *p);
+void fillVMA(struct vmaInfo* vi, uint64 addr, uint64 length, int prot, int flags, int fd, int offset, int pid, struct file *f);

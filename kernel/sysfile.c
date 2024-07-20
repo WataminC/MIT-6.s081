@@ -15,9 +15,6 @@
 #include "sleeplock.h"
 #include "file.h"
 #include "fcntl.h"
-#include "mmap.h"
-
-extern struct vmaInfo mmapInfo[MAXMMAP];
 
 // Fetch the nth word-sized system call argument as a file descriptor
 // and return both the descriptor and the corresponding struct file.
@@ -491,10 +488,33 @@ sys_pipe(void)
 uint64
 sys_mmap(void)
 {
-  uint64 addr, length;
-  int prot, flags, fd, offset;
+  uint64 addr;
+  int length, prot, flags, fd;
+  argint(1, &length);
+  argint(2, &prot);
+  argint(3, &flags);
 
-  argaddr()
+  struct file *f;
+  if(argfd(4, &fd, &f) < 0)
+    return -1;
+
+  struct proc *p = myproc();
+
+  addr = p->sz;
+
+  if (!uvmalloc(p->pagetable, p->sz, p->sz + length)) {
+    return -1;
+  }
+  uvmdealloc(p->pagetable, p->sz, p->sz - length);
+
+
+  if (filedup(f) != f)
+    return -1;
+
+  struct vmaInfo *vi = getEmptyVMA(p);
+  fillVMA(vi, addr, length, prot, flags, fd, 0, p->pid, f);
+
+  return addr;
 }
 
 uint64

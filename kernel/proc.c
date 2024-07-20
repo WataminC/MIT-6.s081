@@ -48,6 +48,7 @@ procinit(void)
   for(p = proc; p < &proc[NPROC]; p++) {
       initlock(&p->lock, "proc");
       p->kstack = KSTACK((int) (p - proc));
+      initVMA(p);
   }
 }
 
@@ -700,4 +701,51 @@ procdump(void)
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
   }
+}
+
+void initVMA(struct proc *p)
+{
+    for (int i = 0; i < NVMA; ++i)
+    {
+        p->vma[i].addr = 0;
+        p->vma[i].using = 0;
+        p->vma[i].offset = 0;
+        p->vma[i].fd = -1;
+        p->vma[i].flags = -1;
+        p->vma[i].prot = -1;
+        p->vma[i].pid = -1;
+        p->vma[i].f = 0;
+    }
+}
+
+struct vmaInfo* getEmptyVMA(struct proc *p)
+{
+    int i;
+    for (i = 0; i < NVMA; ++i)
+    {
+        if (p->vma[i].using == 0) {
+            p->vma[i].addr = 0;
+            p->vma[i].using = 0;
+            p->vma[i].offset = 0;
+            p->vma[i].fd = -1;
+            p->vma[i].flags = -1;
+            p->vma[i].prot = -1;
+            p->vma[i].pid = -1;
+            p->vma[i].f = 0;
+            break;
+        }
+    } 
+    return &p->vma[i];
+}
+
+void fillVMA(struct vmaInfo* vi, uint64 addr, uint64 length, int prot, int flags, int fd, int offset, int pid, struct file *f)
+{
+    vi->addr = addr;
+    vi->length = length;
+    vi->prot = prot;
+    vi->flags = flags;
+    vi->fd = fd;
+    vi->offset = offset;
+    vi->pid = pid;
+    vi->f = f;
 }
