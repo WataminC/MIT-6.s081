@@ -48,6 +48,8 @@ argraw(int n)
     return p->trapframe->a4;
   case 5:
     return p->trapframe->a5;
+  case 6:
+    return p->trapframe->a6;
   }
   panic("argraw");
   return -1;
