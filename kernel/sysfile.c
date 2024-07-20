@@ -502,11 +502,11 @@ sys_mmap(void)
 
   addr = p->sz;
 
-  if (!uvmalloc(p->pagetable, p->sz, p->sz + length)) {
-    return -1;
-  }
-  uvmdealloc(p->pagetable, p->sz, p->sz - length);
-
+  // if (!uvmalloc(p->pagetable, p->sz, p->sz + length)) {
+  //   return -1;
+  // }
+  // uvmdealloc(p->pagetable, p->sz, p->sz - length);
+  p->sz += length;
 
   if (filedup(f) != f)
     return -1;
