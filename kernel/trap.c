@@ -67,44 +67,51 @@ usertrap(void)
     intr_on();
 
     syscall();
-  } else if (r_scause() == 13 || r_scause == 15) {
-    uint64 va = r_stval();
-    struct proc *p = myproc();
-    struct vmaInfo *vi;
-    int flag = 0;
+  } else if ((r_scause() == 13) || (r_scause() == 15)) {
+    // uint64 va = r_stval();
 
-    for (int i = 0; i < NVMA; ++i) {
-      vi = &p->vma[i];
-      if (vi->addr <= vi && vi <= (vi->addr + vi->length)) {
-        flag = 1;
-        break;
-      }
-    }
+    // if (va > p->sz) {
+    //   panic("va bigger than p'sz");
+    // }
 
-    if (!flag)
-      panic("No a mmap addrs");
+    // struct proc *p = myproc();
+    // struct vmaInfo *vi;
+    // int flag = 0;
 
-    va = PGROUNDDOWN(va);
-    uint64 pa = kalloc();
-    if (pa == 0)
-      panic("No more space");
-    memset(pa, 0, PGSIZE);
+    // for (int i = 0; i < NVMA; ++i) {
+    //   vi = &p->vma[i];
+    //   if ((vi->addr <= (uint64)vi) && ((uint64)vi <= (vi->addr + vi->length))) {
+    //     flag = 1;
+    //     break;
+    //   }
+    // }
 
-    readi(vi->f->ip, 0, va, va-vi->addr, PGSIZE);
+    // if (!flag)
+    //   panic("No a mmap addrs");
 
-    // valid bit
-    int perm = 1;
+    // va = PGROUNDDOWN(va);
+    // uint64 pa = (uint64)kalloc();
+    // if (pa == 0)
+    //   panic("No more space");
+    // memset((void *)pa, 0, PGSIZE);
 
-    if (vi->prot & PROT_READ)
-      perm |= PTE_R;
-    if (vi->prot & PROT_WRITE)
-      perm |= PTE_W;
-    if (vi->prot & PROT_EXEC)
-      perm |= PTE_X;
+    // ilock(vi->f->ip);
+    // readi(vi->f->ip, 0, va, va-vi->addr, PGSIZE);
+    // iunlock(vi->f->ip);
 
-    if (mappages(p->pagetable, va, PGSIZE, pa, perm) < 0) {
-      panic("mappage error!");
-    }
+    // // valid bit
+    // int perm = 1;
+
+    // if (vi->prot & PROT_READ)
+    //   perm |= PTE_R;
+    // if (vi->prot & PROT_WRITE)
+    //   perm |= PTE_W;
+    // if (vi->prot & PROT_EXEC)
+    //   perm |= PTE_X;
+
+    // if (mappages(p->pagetable, va, PGSIZE, pa, perm) < 0) {
+    //   panic("mappage error!");
+    // }
   } else if((which_dev = devintr()) != 0){
     // ok
   } else {
