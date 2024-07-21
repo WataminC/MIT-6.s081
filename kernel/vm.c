@@ -4,7 +4,12 @@
 #include "elf.h"
 #include "riscv.h"
 #include "defs.h"
+#include "fcntl.h"
+#include "spinlock.h"
+#include "sleeplock.h"
+#include "proc.h"
 #include "fs.h"
+#include "file.h"
 
 /*
  * the kernel's page table.
@@ -146,7 +151,7 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
     if((pte = walk(pagetable, a, 1)) == 0)
       return -1;
     if(*pte & PTE_V)
-      panic("remap");
+      return -1;
     *pte = PA2PTE(pa) | perm | PTE_V;
     if(a == last)
       break;
@@ -429,3 +434,47 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
     return -1;
   }
 }
+
+// int mmap_pagefault(uint64 va)
+// {
+//   struct proc *p = myproc();
+//   struct vmaInfo *vi;
+//   int flag = 0;
+
+//   for (int i = 0; i < NVMA; ++i) {
+//     vi = &p->vma[i];
+//     if ((vi->addr <= (uint64)vi) && ((uint64)vi <= (vi->addr + vi->length))) {
+//       flag = 1;
+//       break;
+//     }
+//   }
+
+//   if (!flag)
+//     panic("No a mmap addrs");
+
+//   va = PGROUNDDOWN(va);
+//   uint64 pa = (uint64)kalloc();
+//   if (pa == 0)
+//     panic("No more space");
+//   memset((void *)pa, 0, PGSIZE);
+
+//   ilock(vi->f->ip);
+//   readi(vi->f->ip, 0, va, va-vi->addr, PGSIZE);
+//   iunlock(vi->f->ip);
+
+//   // valid bit
+//   int perm = 1;
+
+//   if (vi->prot & PROT_READ)
+//     perm |= PTE_R;
+//   if (vi->prot & PROT_WRITE)
+//     perm |= PTE_W;
+//   if (vi->prot & PROT_EXEC)
+//     perm |= PTE_X;
+
+//   if (mappages(p->pagetable, va, PGSIZE, pa, perm) < 0) {
+//     panic("mappage error!");
+//   }
+
+//   return 0;
+// }

@@ -6,6 +6,8 @@
 #include "proc.h"
 #include "defs.h"
 #include "fcntl.h"
+#include "sleeplock.h"
+#include "fs.h"
 #include "file.h"
 
 struct spinlock tickslock;
@@ -68,50 +70,56 @@ usertrap(void)
 
     syscall();
   } else if ((r_scause() == 13) || (r_scause() == 15)) {
-    // uint64 va = r_stval();
+    uint64 va = r_stval();
 
-    // if (va > p->sz) {
-    //   panic("va bigger than p'sz");
-    // }
+    if (va > p->sz) {
+      panic("va bigger than p'sz");
+    }
 
-    // struct proc *p = myproc();
-    // struct vmaInfo *vi;
-    // int flag = 0;
+    struct proc *p = myproc();
+    struct vmaInfo *vi;
+    int flag = 0;
 
-    // for (int i = 0; i < NVMA; ++i) {
-    //   vi = &p->vma[i];
-    //   if ((vi->addr <= (uint64)vi) && ((uint64)vi <= (vi->addr + vi->length))) {
-    //     flag = 1;
-    //     break;
-    //   }
-    // }
+    for (int i = 0; i < NVMA; ++i) {
+      vi = &p->vma[i];
+      if ((vi->addr <= va) && (va <= (vi->addr + vi->length))) {
+        flag = 1;
+        break;
+      }
+    }
 
-    // if (!flag)
-    //   panic("No a mmap addrs");
+    if (!flag)
+      panic("No a mmap addrs");
 
-    // va = PGROUNDDOWN(va);
-    // uint64 pa = (uint64)kalloc();
-    // if (pa == 0)
-    //   panic("No more space");
-    // memset((void *)pa, 0, PGSIZE);
+    va = PGROUNDDOWN(va);
+    uint64 pa = (uint64)kalloc();
+    if (pa == 0)
+      panic("No more space");
+    memset((void *)pa, 0, PGSIZE);
 
-    // ilock(vi->f->ip);
-    // readi(vi->f->ip, 0, va, va-vi->addr, PGSIZE);
-    // iunlock(vi->f->ip);
+    ilock(vi->f->ip);
+    if (!readi(vi->f->ip, 0, pa, va-vi->addr, PGSIZE)) {
+      iunlock(vi->f->ip);
+      panic("Read wrong!");
+    }
+    iunlock(vi->f->ip);
 
-    // // valid bit
-    // int perm = 1;
+    // valid bit
+    int perm = PTE_U;
 
-    // if (vi->prot & PROT_READ)
-    //   perm |= PTE_R;
-    // if (vi->prot & PROT_WRITE)
-    //   perm |= PTE_W;
-    // if (vi->prot & PROT_EXEC)
-    //   perm |= PTE_X;
+    if (vi->prot & PROT_READ)
+      perm |= PTE_R;
+    if (vi->prot & PROT_WRITE)
+      perm |= PTE_W;
+    if (vi->prot & PROT_EXEC)
+      perm |= PTE_X;
 
-    // if (mappages(p->pagetable, va, PGSIZE, pa, perm) < 0) {
-    //   panic("mappage error!");
-    // }
+    if (mappages(p->pagetable, va, PGSIZE, pa, perm) < 0) {
+      printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
+      printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
+      p->killed = 1;
+      panic("mappage error!");
+    }
   } else if((which_dev = devintr()) != 0){
     // ok
   } else {
