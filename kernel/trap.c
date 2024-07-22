@@ -72,8 +72,8 @@ usertrap(void)
   } else if ((r_scause() == 13) || (r_scause() == 15)) {
     uint64 va = r_stval();
 
-    if (va > p->sz) {
-      panic("va bigger than p'sz");
+    if (va > p->vma_startpos) {
+      panic("va illegal");
     }
 
     struct proc *p = myproc();
@@ -82,7 +82,7 @@ usertrap(void)
 
     for (int i = 0; i < NVMA; ++i) {
       vi = &p->vma[i];
-      if ((vi->addr <= va) && (va <= (vi->addr + vi->length))) {
+      if ((vi->addr <= va) && (va < (vi->addr + vi->length))) {
         flag = 1;
         break;
       }
@@ -97,6 +97,7 @@ usertrap(void)
       panic("No more space");
     memset((void *)pa, 0, PGSIZE);
 
+    // printf("va: %p, pa: %p, inode: %p, off: %d\n", va, pa, vi->f->ip, va-vi->addr);
     ilock(vi->f->ip);
     if (!readi(vi->f->ip, 0, pa, va-vi->addr, PGSIZE)) {
       iunlock(vi->f->ip);

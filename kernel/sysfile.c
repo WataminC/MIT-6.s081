@@ -498,15 +498,17 @@ sys_mmap(void)
   if(argfd(4, &fd, &f) < 0)
     return -1;
 
+  if ((prot & PROT_READ) && !f->readable)
+    return -1;
+  if ((prot & PROT_WRITE) && !f->writable)
+    if (!(flags & MAP_PRIVATE))
+      return -1;
+
   struct proc *p = myproc();
 
-  addr = p->sz;
+  addr = p->vma_startpos;
 
-  // if (!uvmalloc(p->pagetable, p->sz, p->sz + length)) {
-  //   return -1;
-  // }
-  // uvmdealloc(p->pagetable, p->sz, p->sz - length);
-  p->sz += length;
+  p->vma_startpos += length;
 
   if (filedup(f) != f)
     return -1;
@@ -520,5 +522,83 @@ sys_mmap(void)
 uint64
 sys_munmap(void)
 {
-  return -1;
+  uint64 addr;
+  int length;
+  argaddr(0, &addr);
+  argint(1, &length);
+
+  struct proc *p = myproc();
+  struct vmaInfo *vi;
+  int flag = 0;
+
+  for (int i = 0; i < NVMA; ++i) {
+    vi = &p->vma[i];
+    if ((vi->addr <= addr) && (addr < (vi->addr + vi->length))) {
+      flag = 1;
+      break;
+    }
+  }
+
+  if (!flag)
+    panic("No a mmap addrs");
+
+  if (vi->addr == addr) {
+    vi->addr = vi->addr + length;
+  }
+  vi->length -= length;
+
+  if (vi->flags & MAP_SHARED) {
+    uint64 tempLen = length;
+    uint64 tempAddr = PGROUNDDOWN(addr);
+    tempLen += (addr - tempAddr);
+    while (tempLen) {
+      // printf("point1\n");
+      int max = ((MAXOPBLOCKS-1-1-2) / 2) * BSIZE;
+      int r = 0;
+      int i = 0;
+      int mark = 0;
+      while(i < tempLen){
+        // printf("i: %d, tempLen: %d\n", i, tempLen);
+        pte_t *pte;
+
+        if ((pte = walk(p->pagetable, tempAddr, 0)) == 0 || ((*pte & PTE_V) == 0)) {
+          mark = 1;
+          // printf("pte: %p, *pte: %x\n", pte, *pte);
+          break;
+        }
+
+        int n1 = tempLen - i;
+        if(n1 > max)
+          n1 = max;
+
+        // printf("tempAddr: %d, i: %d, vi->addr: %d\n", tempAddr, i, vi->addr);
+        begin_op();
+        ilock(vi->f->ip);
+        if ((r = writei(vi->f->ip, 1, tempAddr + i, tempAddr+i-addr, n1)) <= 0) {
+          printf("Error, r: %d\n", r);
+        }
+        iunlock(vi->f->ip);
+        end_op();
+
+        if(r != n1){
+          // error from writei
+          printf("r != n1, r: %d, n1: %d\n", r, n1);
+          break;
+        }
+        i += r;
+      }
+      if (!mark)
+        uvmunmap(p->pagetable, tempAddr, 1, 1);
+      tempLen -= PGSIZE;
+      tempAddr += PGSIZE;
+      // printf("point2\n");
+    }
+  }
+
+  if (vi->length == 0) {
+    vi->using = 0;
+    fileclose(vi->f);
+  }
+
+  return 0;
 }

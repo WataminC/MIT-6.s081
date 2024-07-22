@@ -117,4 +117,5 @@ struct proc {
   char name[16];               // Process name (debugging)
 
   struct vmaInfo vma[NVMA];
+  uint64 vma_startpos;
 };

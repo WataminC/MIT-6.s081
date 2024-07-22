@@ -113,9 +113,7 @@ mmap_test(void)
   char *p = mmap(0, PGSIZE*2, PROT_READ, MAP_PRIVATE, fd, 0);
   if (p == MAP_FAILED)
     err("mmap (1)");
-  printf("test point 1\n");
   _v1(p);
-  printf("test point 2\n");
   if (munmap(p, PGSIZE*2) == -1)
     err("munmap (1)");
 
@@ -229,10 +227,17 @@ mmap_test(void)
   close(fd2);
   unlink("mmap2");
 
+  printf("test point1\n");
+
   if(memcmp(p1, "12345", 5) != 0)
     err("mmap1 mismatch");
+
+  printf("test point2\n");
+
   if(memcmp(p2, "67890", 5) != 0)
     err("mmap2 mismatch");
+
+  printf("test point3\n");
 
   munmap(p1, PGSIZE);
   if(memcmp(p2, "67890", 5) != 0)

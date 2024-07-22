@@ -49,6 +49,7 @@ procinit(void)
       initlock(&p->lock, "proc");
       p->kstack = KSTACK((int) (p - proc));
       initVMA(p);
+      p->vma_startpos = VMABASE;
   }
 }
 
@@ -732,6 +733,7 @@ struct vmaInfo* getEmptyVMA(struct proc *p)
             p->vma[i].prot = -1;
             p->vma[i].pid = -1;
             p->vma[i].f = 0;
+            p->vma[i].using = 1;
             break;
         }
     } 

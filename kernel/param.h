@@ -12,3 +12,5 @@
 #define FSSIZE       1000  // size of file system in blocks
 #define MAXPATH      128   // maximum file path name
 #define NVMA         16
+#define VMABASE      0x40000000
+// #define VMABASE      0x4000
