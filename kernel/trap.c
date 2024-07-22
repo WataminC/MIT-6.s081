@@ -100,7 +100,7 @@ usertrap(void)
       panic("No more space");
     memset((void *)pa, 0, PGSIZE);
 
-    printf("trap(1): p->pid: %d, va: %p, pa: %p, inode: %p, off: %d\n", p->pid, va, pa, vi->f->ip, va-vi->addr);
+    // printf("trap(1): p->pid: %d, va: %p, pa: %p, inode: %p, off: %d\n", p->pid, va, pa, vi->f->ip, va-vi->addr);
     ilock(vi->f->ip);
     if (!readi(vi->f->ip, 0, pa, va-vi->addr, PGSIZE)) {
       iunlock(vi->f->ip);

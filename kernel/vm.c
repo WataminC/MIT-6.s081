@@ -279,7 +279,7 @@ freewalk(pagetable_t pagetable)
       freewalk((pagetable_t)child);
       pagetable[i] = 0;
     } else if(pte & PTE_V){
-      printf("freewalk(2): p->pid: %d, pte: %p, *pte: 0x%x, pa: %p\n", myproc()->pid, &pte, pte, PTE2PA(pte));
+      // printf("freewalk(2): p->pid: %d, pte: %p, *pte: 0x%x, pa: %p\n", myproc()->pid, &pte, pte, PTE2PA(pte));
       panic("freewalk: leaf");
     }
   }
@@ -459,24 +459,23 @@ int munmap_kernel(uint64 addr, uint64 length) {
   }
   vi->length -= length;
 
-  if (vi->flags & MAP_SHARED) {
-    uint64 tempLen = length;
-    uint64 tempAddr = PGROUNDDOWN(addr);
-    tempLen += (addr - tempAddr);
-    while (tempLen) {
-      int max = ((MAXOPBLOCKS-1-1-2) / 2) * BSIZE;
-      int r = 0;
-      int i = 0;
-      int mark = 0;
-      while(i < tempLen){
-        // printf("i: %d, tempLen: %d\n", i, tempLen);
-        pte_t *pte;
+  uint64 tempLen = length;
+  uint64 tempAddr = PGROUNDDOWN(addr);
+  tempLen += (addr - tempAddr);
+  while (tempLen) {
+    int max = ((MAXOPBLOCKS-1-1-2) / 2) * BSIZE;
+    int r = 0;
+    int i = 0;
+    int mark = 0;
 
-        if ((pte = walk(p->pagetable, tempAddr, 0)) == 0 || ((*pte & PTE_V) == 0)) {
-          printf("pte: %p, *pte: %x\n", pte, *pte);
-          mark = 1;
-          break;
-        }
+    pte_t *pte;
+    if ((pte = walk(p->pagetable, tempAddr, 0)) == 0 || ((*pte & PTE_V) == 0)) {
+      // printf("pte: %p, *pte: %x\n", pte, *pte);
+      mark = 1;
+    }
+    if (vi->flags & MAP_SHARED && !mark) {
+      while(i < tempLen){
+        
 
         int n1 = tempLen - i;
         if(n1 > max)
@@ -498,13 +497,13 @@ int munmap_kernel(uint64 addr, uint64 length) {
         }
         i += r;
       }
-      if (!mark) {
-        printf("munmap(3): p->pid: %d, addr: %p\n", p->pid, tempAddr);
-        uvmunmap(p->pagetable, tempAddr, 1, 1);
-      }
-      tempLen -= PGSIZE;
-      tempAddr += PGSIZE;
     }
+    if (!mark) {
+      // printf("munmap(3): p->pid: %d, addr: %p\n", p->pid, tempAddr);
+      uvmunmap(p->pagetable, tempAddr, 1, 1);
+    }
+    tempLen -= PGSIZE;
+    tempAddr += PGSIZE;
   }
 
   if (vi->length == 0) {

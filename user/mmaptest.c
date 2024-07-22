@@ -117,8 +117,6 @@ mmap_test(void)
   if (munmap(p, PGSIZE*2) == -1)
     err("munmap (1)");
 
-  err("By my own");
-
   printf("test mmap f: OK\n");
     
   printf("test mmap private\n");

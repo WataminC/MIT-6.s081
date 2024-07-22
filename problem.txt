@@ -1,0 +1,4 @@
+1. forget PTE_U
+2. page alignment when munmap
+3. should not unmap not used memory
+4. unmap MAP_PRIVATE
