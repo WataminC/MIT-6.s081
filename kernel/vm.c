@@ -279,6 +279,7 @@ freewalk(pagetable_t pagetable)
       freewalk((pagetable_t)child);
       pagetable[i] = 0;
     } else if(pte & PTE_V){
+      printf("freewalk(2): p->pid: %d, pte: %p, *pte: 0x%x, pa: %p\n", myproc()->pid, &pte, pte, PTE2PA(pte));
       panic("freewalk: leaf");
     }
   }
@@ -437,46 +438,79 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
   }
 }
 
-// int mmap_pagefault(uint64 va)
-// {
-//   struct proc *p = myproc();
-//   struct vmaInfo *vi;
-//   int flag = 0;
+int munmap_kernel(uint64 addr, uint64 length) {
+  struct proc *p = myproc();
+  struct vmaInfo *vi;
+  int flag = 0;
 
-//   for (int i = 0; i < NVMA; ++i) {
-//     vi = &p->vma[i];
-//     if ((vi->addr <= (uint64)vi) && ((uint64)vi <= (vi->addr + vi->length))) {
-//       flag = 1;
-//       break;
-//     }
-//   }
+  for (int i = 0; i < NVMA; ++i) {
+    vi = &p->vma[i];
+    if ((vi->addr <= addr) && (addr < (vi->addr + vi->length))) {
+      flag = 1;
+      break;
+    }
+  }
 
-//   if (!flag)
-//     panic("No a mmap addrs");
+  if (!flag)
+    panic("No a mmap addrs");
 
-//   va = PGROUNDDOWN(va);
-//   uint64 pa = (uint64)kalloc();
-//   if (pa == 0)
-//     panic("No more space");
-//   memset((void *)pa, 0, PGSIZE);
+  if (vi->addr == addr) {
+    vi->addr = vi->addr + length;
+  }
+  vi->length -= length;
 
-//   ilock(vi->f->ip);
-//   readi(vi->f->ip, 0, va, va-vi->addr, PGSIZE);
-//   iunlock(vi->f->ip);
+  if (vi->flags & MAP_SHARED) {
+    uint64 tempLen = length;
+    uint64 tempAddr = PGROUNDDOWN(addr);
+    tempLen += (addr - tempAddr);
+    while (tempLen) {
+      int max = ((MAXOPBLOCKS-1-1-2) / 2) * BSIZE;
+      int r = 0;
+      int i = 0;
+      int mark = 0;
+      while(i < tempLen){
+        // printf("i: %d, tempLen: %d\n", i, tempLen);
+        pte_t *pte;
 
-//   // valid bit
-//   int perm = 1;
+        if ((pte = walk(p->pagetable, tempAddr, 0)) == 0 || ((*pte & PTE_V) == 0)) {
+          printf("pte: %p, *pte: %x\n", pte, *pte);
+          mark = 1;
+          break;
+        }
 
-//   if (vi->prot & PROT_READ)
-//     perm |= PTE_R;
-//   if (vi->prot & PROT_WRITE)
-//     perm |= PTE_W;
-//   if (vi->prot & PROT_EXEC)
-//     perm |= PTE_X;
+        int n1 = tempLen - i;
+        if(n1 > max)
+          n1 = max;
 
-//   if (mappages(p->pagetable, va, PGSIZE, pa, perm) < 0) {
-//     panic("mappage error!");
-//   }
+        // printf("tempAddr: %d, i: %d, vi->addr: %d\n", tempAddr, i, vi->addr);
+        begin_op();
+        ilock(vi->f->ip);
+        if ((r = writei(vi->f->ip, 1, tempAddr + i, tempAddr+i-vi->startAddr, n1)) <= 0) {
+          printf("Error, r: %d\n", r);
+        }
+        iunlock(vi->f->ip);
+        end_op();
 
-//   return 0;
-// }
+        if(r != n1){
+          // error from writei
+          printf("r != n1, r: %d, n1: %d\n", r, n1);
+          break;
+        }
+        i += r;
+      }
+      if (!mark) {
+        printf("munmap(3): p->pid: %d, addr: %p\n", p->pid, tempAddr);
+        uvmunmap(p->pagetable, tempAddr, 1, 1);
+      }
+      tempLen -= PGSIZE;
+      tempAddr += PGSIZE;
+    }
+  }
+
+  if (vi->length == 0) {
+    vi->using = 0;
+    fileclose(vi->f);
+  }
+
+  return 0;
+}

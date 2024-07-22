@@ -117,6 +117,8 @@ mmap_test(void)
   if (munmap(p, PGSIZE*2) == -1)
     err("munmap (1)");
 
+  err("By my own");
+
   printf("test mmap f: OK\n");
     
   printf("test mmap private\n");
@@ -227,17 +229,11 @@ mmap_test(void)
   close(fd2);
   unlink("mmap2");
 
-  printf("test point1\n");
-
   if(memcmp(p1, "12345", 5) != 0)
     err("mmap1 mismatch");
 
-  printf("test point2\n");
-
   if(memcmp(p2, "67890", 5) != 0)
     err("mmap2 mismatch");
-
-  printf("test point3\n");
 
   munmap(p1, PGSIZE);
   if(memcmp(p2, "67890", 5) != 0)

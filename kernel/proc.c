@@ -159,6 +159,7 @@ freeproc(struct proc *p)
   p->killed = 0;
   p->xstate = 0;
   p->state = UNUSED;
+  p->vma_startpos = VMABASE;
 }
 
 // Create a user page table for a given process,
@@ -284,6 +285,14 @@ fork(void)
   }
   np->sz = p->sz;
 
+  for (int i = 0; i < NVMA; ++i) {
+    if (p->vma[i].using) {
+      np->vma[i] = p->vma[i];
+      np->vma_startpos = p->vma_startpos;
+      filedup(np->vma[i].f);
+    }
+  }
+
   np->parent = p;
 
   // copy saved user registers.
@@ -378,6 +387,13 @@ exit(int status)
   acquire(&p->lock);
   struct proc *original_parent = p->parent;
   release(&p->lock);
+
+  for (int i = 0; i < NVMA; ++i) {
+    if (p->vma[i].using) {
+      munmap_kernel(p->vma[i].addr, p->vma[i].length);
+      p->vma[i].using = 0;
+    }
+  }
   
   // we need the parent's lock in order to wake it up from wait().
   // the parent-then-child rule says we have to lock it first.
@@ -716,6 +732,7 @@ void initVMA(struct proc *p)
         p->vma[i].prot = -1;
         p->vma[i].pid = -1;
         p->vma[i].f = 0;
+        p->vma[i].startAddr = 0;
     }
 }
 
@@ -725,6 +742,7 @@ struct vmaInfo* getEmptyVMA(struct proc *p)
     for (i = 0; i < NVMA; ++i)
     {
         if (p->vma[i].using == 0) {
+            p->vma[i].startAddr = 0;
             p->vma[i].addr = 0;
             p->vma[i].using = 0;
             p->vma[i].offset = 0;
@@ -742,6 +760,7 @@ struct vmaInfo* getEmptyVMA(struct proc *p)
 
 void fillVMA(struct vmaInfo* vi, uint64 addr, uint64 length, int prot, int flags, int fd, int offset, int pid, struct file *f)
 {
+    vi->startAddr = addr;
     vi->addr = addr;
     vi->length = length;
     vi->prot = prot;

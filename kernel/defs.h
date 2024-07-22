@@ -192,3 +192,4 @@ void            virtio_disk_intr(void);
 void initVMA(struct proc *p);
 struct vmaInfo* getEmptyVMA(struct proc *p);
 void fillVMA(struct vmaInfo* vi, uint64 addr, uint64 length, int prot, int flags, int fd, int offset, int pid, struct file *f);
+int munmap_kernel(uint64 addr, uint64 length);

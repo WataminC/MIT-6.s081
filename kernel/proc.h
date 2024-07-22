@@ -81,6 +81,7 @@ struct trapframe {
 };
 
 struct vmaInfo {
+    uint64 startAddr;
     uint64 addr;
     uint64 length;
     int prot;

@@ -73,7 +73,8 @@ usertrap(void)
     uint64 va = r_stval();
 
     if (va > p->vma_startpos) {
-      panic("va illegal");
+      p->killed = -1;
+      exit(-1);
     }
 
     struct proc *p = myproc();
@@ -88,8 +89,10 @@ usertrap(void)
       }
     }
 
-    if (!flag)
-      panic("No a mmap addrs");
+    if (!flag) {
+      p->killed = -1;
+      exit(-1);
+    }
 
     va = PGROUNDDOWN(va);
     uint64 pa = (uint64)kalloc();
@@ -97,7 +100,7 @@ usertrap(void)
       panic("No more space");
     memset((void *)pa, 0, PGSIZE);
 
-    // printf("va: %p, pa: %p, inode: %p, off: %d\n", va, pa, vi->f->ip, va-vi->addr);
+    printf("trap(1): p->pid: %d, va: %p, pa: %p, inode: %p, off: %d\n", p->pid, va, pa, vi->f->ip, va-vi->addr);
     ilock(vi->f->ip);
     if (!readi(vi->f->ip, 0, pa, va-vi->addr, PGSIZE)) {
       iunlock(vi->f->ip);
